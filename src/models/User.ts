@@ -11,7 +11,8 @@ export interface Device {
     platform: Platform
 }
 
-export const UserExposedFields = ['username', 'displayName', 'avatarUrl', 'lang', 'location', 'timezone'];
+export const UserExposedFields = ['username', 'displayName', 'avatarUrl', 'lang', 'location', 'timezone', 'metadata'];
+export const MetadataExposedFields = ['coins', 'gems'];
 
 export interface IUser<T=any> extends Document {
     username: string,

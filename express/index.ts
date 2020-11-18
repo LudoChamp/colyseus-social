@@ -72,8 +72,8 @@ auth.get("/", jwtMiddleware, async (req, res) => {
     tryOrErr(res, async () => {
         // TODO: allow to set user status?
         const { status } = req.query;
-
-        res.json({ status: await pingUser(req.cauth._id) });
+        const user = await pingUser(req.cauth._id);
+        res.json({ ...user.toJSON() });
     }, 500);
 });
 

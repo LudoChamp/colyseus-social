@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import nanoid from "nanoid";
-import User, { IUser, Platform, UserExposedFields } from "./models/User";
+import User, { IUser, Platform, UserExposedFields , MetadataExposedFields} from "./models/User";
 import { getFacebookUser } from "./facebook";
 
 import { MONGO_URI } from "./env";
@@ -10,6 +10,7 @@ import { hashPassword, isValidPassword, verifyToken } from "./auth";
 import { hooks } from "./hooks";
 
 const debug = require('debug')('@colyseus/social');
+require('source-map-support').install();
 
 const DEFAULT_USER_FIELDS: Array<keyof IUser> = ['_id', 'username', 'displayName', 'avatarUrl', 'metadata'];
 const ONLINE_SECONDS = 20;
@@ -35,8 +36,20 @@ export async function connectDatabase(cb?: (err: MongoError) => void) {
     }
 }
 
+function cleanup() {
+    try {
+        mongoose.disconnect()
+        debug(`Successfully Closed connection to  from to ${MONGO_URI}`)
+    } catch (e) {
+        console.error('Error Closing connection to database: ', e);
+    }
+}
+
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+
 export async function pingUser(userId: ObjectId) {
-    return (await User.updateOne({ _id: userId }, { $set: { updatedAt: new Date() } })).nModified > 0;
+    return await User.findOne({ _id: userId });
 }
 
 export async function authenticate({
@@ -193,7 +206,13 @@ export async function updateUser(_id: ObjectId, fields: Partial<IUser>) {
     // filter only exposed fields
     for (const field of UserExposedFields) {
         if (typeof (fields[field]) !== "undefined") {
-            $set[field] = fields[field];
+            if(field === "metadata") {
+                for (const subField of MetadataExposedFields) {
+                    $set[field][subField] = fields[field][subField];
+                }
+            } else {
+                $set[field] = fields[field];
+            }
         }
     }
 
