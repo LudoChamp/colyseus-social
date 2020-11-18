@@ -1,5 +1,5 @@
 {
-  "name": "@colyseus/social",
+  "name": "LudoSocial",
   "version": "0.11.5",
   "description": "Authentication and Social features for Colyseus",
   "main": "src/index.js",
