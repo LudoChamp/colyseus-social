@@ -41,8 +41,7 @@
     "nanoid": "^2.0.2",
     "node-pushnotifications": "^1.1.8",
     "oauth": "^0.9.15",
-    "strong-events": "^1.0.7",
-    "tsc": "^1.20150623.0"
+    "strong-events": "^1.0.7"
   },
   "devDependencies": {
     "@types/debug": "^4.1.4",
