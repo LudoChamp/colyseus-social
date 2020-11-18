@@ -7,9 +7,7 @@
   "scripts": {
     "watch": "tsc -w",
     "clean": "find . -name '*.js' -not -path './node_modules/*' -not -path './src/webpush_register.js' | xargs rm && find . -name '*.d.ts' -not -path './node_modules/*' | xargs rm",
-    "test": "mocha --require ts-node/register test/**Test.ts test/**/*Test.ts --exit",
-    "prepublish": "npx tsc",
-    "postinstall": "tsc --outDir ./build"
+    "test": "mocha --require ts-node/register test/**Test.ts test/**/*Test.ts --exit"
   },
   "files": [
     "**/*.js",
