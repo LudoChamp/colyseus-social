@@ -53,12 +53,17 @@ auth.post("/", async (req, res) => {
     tryOrErr(res, async () => {
         const { accessToken, deviceId, platform, token, email, password } = req.query;
 
-        const user = await authenticate({ accessToken, deviceId, platform, token, email, password });
-        if (deviceId && platform) {
-            await assignDeviceToUser(user, deviceId, platform);
+        try {
+            const user = await authenticate({ accessToken, deviceId, platform, token, email, password });
+            if (deviceId && platform) {
+                await assignDeviceToUser(user, deviceId, platform);
+            }
+
+            res.json({ ...user.toJSON(), ...createToken(user) });
+        } catch (ex) {
+            console.error(ex);
         }
 
-        res.json({ ...user.toJSON(), ...createToken(user) });
     }, 401);
 });
 

@@ -95,7 +95,7 @@ export async function authenticate({
         $setOnInsert['username'] = `${data.short_name}${data.id}`;
 
         if (data.name) {
-            $setOnInsert['displayName'] = data.name;
+            $set['displayName'] = data.name;
         }
 
         if (data.email) {
@@ -207,6 +207,9 @@ export async function updateUser(_id: ObjectId, fields: Partial<IUser>) {
     for (const field of UserExposedFields) {
         if (typeof (fields[field]) !== "undefined") {
             if(field === "metadata") {
+                if(!$set[field]) {
+                    $set[field] = {};
+                }
                 for (const subField of MetadataExposedFields) {
                     $set[field][subField] = fields[field][subField];
                 }
