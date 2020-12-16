@@ -12,7 +12,7 @@ export interface Device {
 }
 
 export const UserExposedFields = ['username', 'displayName', 'avatarUrl', 'lang', 'location', 'timezone', 'metadata'];
-export const MetadataExposedFields = ['coins', 'gems'];
+export const MetadataExposedFields = ['coins', 'gems', 'level', 'country'];
 
 export interface IUser<T=any> extends Document {
     username: string,
