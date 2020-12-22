@@ -1,7 +1,11 @@
 import express, { Response } from "express";
 import jwt from "express-jwt";
 
-import { authenticate, getOnlineFriends, sendFriendRequest, connectDatabase, getFriends, getFriendRequests, getFriendRequestsProfile, consumeFriendRequest, assignDeviceToUser, pingUser, blockUser, unblockUser, updateUser, getOnlineUserCount } from "../src";
+import { authenticate, getOnlineFriends, sendFriendRequest, connectDatabase,
+    getLeaderboard, getFriends, getFriendRequests, getFriendRequestsProfile,
+    consumeFriendRequest, assignDeviceToUser, pingUser, blockUser, unblockUser,
+    updateUser, getOnlineUserCount ,verifySignature} from "../src";
+
 import User from "../src/models/User";
 
 import { JWT_SECRET } from "../src/env";
@@ -23,7 +27,6 @@ const tryOrErr = async (res: Response, cb: () => void, statusCode: number) => {
         await cb();
     } catch (e) {
         console.error(e.message);
-
         res.status(statusCode);
         res.json({ error: (e.data && e.data.error && e.data.error.message) || e.message })
     }
@@ -69,7 +72,11 @@ auth.post("/", async (req, res) => {
 
 auth.put("/", jwtMiddleware, express.json(), async (req, res) => {
     tryOrErr(res, async () => {
-        res.json({ status: await updateUser(req.cauth._id, req.body) });
+        if(verifySignature(req.body)) {
+            res.json({ status: await updateUser(req.cauth._id, req.body) });
+        } else {
+            throw "Verification Error";
+        }
     }, 500);
 });
 
@@ -85,6 +92,12 @@ auth.get("/", jwtMiddleware, async (req, res) => {
 auth.get("/online", jwtMiddleware, async (req, res) => {
     tryOrErr(res, async () => {
         res.json({ online: await getOnlineUserCount() });
+    }, 500);
+});
+
+auth.get("/leaderboard", jwtMiddleware, async (req, res) => {
+    tryOrErr(res, async () => {
+        res.json(await getLeaderboard(req.cauth._id));
     }, 500);
 });
 

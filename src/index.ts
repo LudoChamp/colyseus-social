@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import nanoid from "nanoid";
+import crypto from 'crypto'
+import { encode, decode } from 'base64-arraybuffer';
 import User, { IUser, Platform, UserExposedFields , MetadataExposedFields} from "./models/User";
 import { getFacebookUser } from "./facebook";
 
@@ -8,12 +10,56 @@ import { MongoError } from "mongodb";
 import FriendRequest, { IFriendRequest } from "./models/FriendRequest";
 import { hashPassword, isValidPassword, verifyToken } from "./auth";
 import { hooks } from "./hooks";
+import Leaderboard, { ILeaderBoard, IPlayer } from "./models/Leaderboard";
 
 const debug = require('debug')('@colyseus/social');
 require('source-map-support').install();
 
+
+const privateKey =`-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAw4OPh3+NnpFC78BAvIcvx4mTfJIoNrEiEEHshX45dHN6yPTe
+cq9IGg8vXodqkZqfBMx7/sgZK+FvxJkmX8A7PdpRo13O5lFwzIg7UpX4LFn4n8fd
+B42iuYaJ5rlmibVaTu74e0NCy6x1QeKMMxprYfWq+Uy3oE+S3vEIZccwSIbGAaK7
+NB8TtASJlD+YNQC4jdwRM+PxK9ZMWcdib8zLz5FvuiODnggdpFYZW962B4cZZl35
+6tdU5jdGvEURlswHUIsqWWduWhQYnUXgtD4HFOGGtwMjwVtT/6IWnpV/JYtI4GS7
+dWzTma8Sa35MrWX9VrpnmBIU+93lc+mbOGg6iQIDAQABAoIBAETyNQA8a+2aHje7
+3Vhed+vuyRLp28KFrpR7GvRscchuHMOXDob05wFBj5vPNzaHh0JC9gr/91hxFGAI
+/e5QNNP4FEf/AcJYv+VwuTLDbhP92l5GNdy/Br5UAndZtB4l1OX3Aas+KeT3ORZ1
+1KkEzQ9redKWSj7/MLTr3OE/X/iC57pQPZsfhuJI7JmVVJaAU1SPaVmyV3TpCt1x
+eXldX08CcTdyeRyrOeDBAATub5VPkZ4yDgT9ZHbJ6IT192RfZjpBsLqtw7TdcFG0
+/wzUT4C1zP7YGLhH+bALSJFuZ7P459UC60TvOAKPIB5DCYqhhs954Wysb3SbdK6r
+7vOUv4ECgYEA+dMBGvp+4gwQQizbo9aBZS2jmDsAczT0Kc9VNakPfnJ5JMl7a1QE
+TxY7/ex+mXwSFr/X/E6G7Q5yBk7j/2t/nDP50ZDWHphtvpnep+rmFCeH+DlhWejh
+EHGoDVjcS3mPcvjWKrCi8cNcNdNaNLU0wdLgUmjSuBqSIoKiIcee77ECgYEAyFjb
+bSrTUGs+UZbM+TYtmgPXasU09iWUDkll8mQwdknyEEcSUR+emf676TwmhEAN7cXi
+zWGGJWaxT0hunTygDdM6XtxSz5xrIc6eMD+CPLXtqLbBQ1KX81W9PS6mgJ6QEeBN
+4kkqBRYrfJMkv9VrwiIttDXoBPkDQm0OvgYExlkCgYEA0V4w8vc0FyWdCpilim1f
+C/hvvkjUW7jpV5DXDJ2eyo4NUPM6Z/yFj/JGXMwyXVdJoZ8t19nH4ivVC8xZ79mb
+nMFCgIstp35/mtlBbODD6egnX7RXDg7JcAqQmH78QJSjz+sTMbvPE2ZyhPmYA8xJ
+ZpbgQLBwyLIb/qgUUNMHNEECgYEAqBxngyL8Te6vTCcNt9AOU74FdEImPqUppxNP
+yCTpxVgnFiGM7SVrICzv4LXoW/Cjv3Dc7xl2Rsv03GIa7zV/2Bn2UMLveeX2v1dw
+xWuFDQxbb8ZqRON5PWYkdMJAVIy4t0dQEyDxcXM46j9OBuo+kZe8YgsZtZJ9ea+p
+Pyott4ECgYAGDxId00ATm7YmeJQicsZwk197TtM1mx+WrSvRZrjQG8NiyutLQAe2
+VDogwY/TkYowBccnx+gNQhkOx6xQOJLD1fxAFQFnX7CzA5pMgoBP7/aEl0QdLoll
++KxsIYyyMCzaiEvZEQoKYSdCiuFXZ6UIiAPGOfmKIC5+UL302dvIhg==
+-----END RSA PRIVATE KEY-----\n`;
+
+
+const publicKey =`-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw4OPh3+NnpFC78BAvIcv
+x4mTfJIoNrEiEEHshX45dHN6yPTecq9IGg8vXodqkZqfBMx7/sgZK+FvxJkmX8A7
+PdpRo13O5lFwzIg7UpX4LFn4n8fdB42iuYaJ5rlmibVaTu74e0NCy6x1QeKMMxpr
+YfWq+Uy3oE+S3vEIZccwSIbGAaK7NB8TtASJlD+YNQC4jdwRM+PxK9ZMWcdib8zL
+z5FvuiODnggdpFYZW962B4cZZl356tdU5jdGvEURlswHUIsqWWduWhQYnUXgtD4H
+FOGGtwMjwVtT/6IWnpV/JYtI4GS7dWzTma8Sa35MrWX9VrpnmBIU+93lc+mbOGg6
+iQIDAQAB
+-----END PUBLIC KEY-----\n`;
+
 const DEFAULT_USER_FIELDS: Array<keyof IUser> = ['_id', 'username', 'displayName', 'avatarUrl', 'metadata'];
 const ONLINE_SECONDS = 20;
+const LEADER_BOARD_ID = "LeaderBoard1";
+
+let leaderBoardData:ILeaderBoard = null;
 
 export type ObjectId = string | mongoose.Schema.Types.ObjectId;
 export type AuthProvider = 'email' | 'facebook' | 'anonymous';
@@ -200,6 +246,97 @@ export async function authenticate({
     return currentUser;
 }
 
+
+async function updateLeaderboard(id, score) {
+    if(!leaderBoardData) {
+        await loadLeaderboardData();
+    }
+
+    let user = await User.findOne({_id: id});
+    let added = false;
+    if(score > leaderBoardData.minTop) {
+        for(let i = 0; i< leaderBoardData.players.length; i++) {
+            let player = leaderBoardData.players[i];
+            if(player.userId == id) {
+                leaderBoardData.players.splice(i, 1);
+            }
+        }
+        for(let i = 0; i< leaderBoardData.players.length; i++) {
+            let player = leaderBoardData.players[i];
+            if(!added && player.score < score) {
+                leaderBoardData.players.splice(i, 0, {rank: i+1, displayName: user.displayName, avatarUrl: user.avatarUrl, userId: id, score: score})
+                leaderBoardData.players.pop();
+                let $set = {};
+                $set["players"] = leaderBoardData.players;
+                await Leaderboard.updateOne({_id: LEADER_BOARD_ID}, {
+                    $set
+                });
+                added = true;
+            } else {
+                player.rank = i+1
+            }
+        }
+
+        if(added) {
+
+        }
+    }
+}
+
+async function loadLeaderboardData() {
+    leaderBoardData = await Leaderboard.findOne({_id: LEADER_BOARD_ID});
+    if(!leaderBoardData) {
+        var $setOnInsert:any = {};
+        var $set:any = {};
+        let players:IPlayer[] = [
+            {rank: 1, displayName : "Ayaan", avatarUrl :"",  userId: "default" ,score: 1000},
+            {rank: 2, displayName : "Aisha", avatarUrl :"",  userId: "default" ,score: 800},
+            {rank: 3, displayName : "Raj", avatarUrl :"",  userId: "default"   ,score: 700},
+            {rank: 4, displayName : "Sophie", avatarUrl :"",  userId: "default" ,score: 650},
+            {rank: 5, displayName : "Janvi", avatarUrl :"",  userId: "default" ,score: 600},
+            {rank: 6, displayName : "Disha", avatarUrl :"",  userId: "default" ,score: 500}];
+
+        $setOnInsert["players"] = players;
+        $setOnInsert["maxTop"] = 1000;
+        $setOnInsert["minTop"] = 500;
+
+         // find or create user
+        await Leaderboard.updateOne({_id: LEADER_BOARD_ID}, {
+            $setOnInsert,
+            $set
+        }, { upsert: true });
+
+        leaderBoardData = await Leaderboard.findOne({_id: LEADER_BOARD_ID});
+    }
+    return leaderBoardData;
+}
+
+export async function syncLeaderBoard() {
+    const $set = leaderBoardData;
+    const $setOnInsert = leaderBoardData;
+
+    let _id = LEADER_BOARD_ID;
+    await Leaderboard.updateOne({ _id }, {
+        $setOnInsert,
+        $set,
+    }, { upsert: true });
+};
+
+export function verifySignature(body: any) {
+    let payload = body.payload;
+    let signature = decode(body.sign);
+
+    return crypto.verify(
+        "sha256",
+        Buffer.from(payload),
+        {
+            key: publicKey
+        },
+        Buffer.from(signature)
+    )
+}
+
+
 export async function updateUser(_id: ObjectId, fields: Partial<IUser>) {
     const $set: any = {};
 
@@ -212,6 +349,9 @@ export async function updateUser(_id: ObjectId, fields: Partial<IUser>) {
                 }
                 for (const subField of MetadataExposedFields) {
                     $set[field][subField] = fields[field][subField];
+                    if(subField == "score") {
+                        await updateLeaderboard( _id, fields[field][subField] )
+                    }
                 }
             } else {
                 $set[field] = fields[field];
@@ -249,6 +389,33 @@ export async function getOnlineUserCount() {
     return await User.countDocuments({
         updatedAt: { $gte: Date.now() - 1000 * ONLINE_SECONDS }
     });
+}
+
+export async function getLeaderboard(id: String) {
+    let leaderboard = await Leaderboard.findOne({
+        _id: LEADER_BOARD_ID
+    });
+
+    let found = false;
+    let index = -1;
+    for(let i=0; i< leaderboard.players.length ; i++) {
+        let player = leaderboard.players[i];
+        if(player.userId ===id){
+            found = true;
+            index = i;
+            break;
+        }
+        index++;
+    }
+
+    if(!found) {
+        let user = await User.findOne({_id: id});
+        leaderboard.players.pop();
+        let factor = user.metadata.score / ((leaderboard.maxTop - leaderboard.minTop)/2 + leaderboard.minTop);
+        let rank = Math.round(1000 / factor);
+        leaderboard.players.push({rank, displayName: user.displayName, avatarUrl: user.avatarUrl, userId: id.toString(), score: user.metadata.score})
+    }
+    return {leaderboard, index}
 }
 
 export async function sendFriendRequest(senderId: ObjectId, receiverId: ObjectId) {
