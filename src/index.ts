@@ -104,7 +104,8 @@ export async function authenticate({
     platform,
     email,
     password,
-    token
+    token,
+    country
 }: {
     accessToken?: string,
     deviceId?: string,
@@ -112,6 +113,7 @@ export async function authenticate({
     email?: string,
     password?: string,
     token?: string,
+    country?: string
 
 }): Promise<IUser> {
     let provider: AuthProvider;
@@ -213,6 +215,7 @@ export async function authenticate({
      * allow end-user to modify `$setOnInsert` / `$set` values
      */
     hooks.beforeAuthenticate.invoke(provider, $setOnInsert, $set);
+    $setOnInsert.metadata.country = country;
 
     // has filters, let's find which user matched to update.
     if (Object.keys($filter).length > 0) {

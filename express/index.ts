@@ -54,10 +54,10 @@ connectDatabase();
 const auth = express.Router();
 auth.post("/", async (req, res) => {
     tryOrErr(res, async () => {
-        const { accessToken, deviceId, platform, token, email, password } = req.query;
+        const { accessToken, deviceId, platform, token, email, password, country } = req.query;
 
         try {
-            const user = await authenticate({ accessToken, deviceId, platform, token, email, password });
+            const user = await authenticate({ accessToken, deviceId, platform, token, email, password, country });
             if (deviceId && platform) {
                 await assignDeviceToUser(user, deviceId, platform);
             }
@@ -75,7 +75,7 @@ auth.put("/", jwtMiddleware, express.json(), async (req, res) => {
         if(verifySignature(req.body)) {
             res.json({ status: await updateUser(req.cauth._id, req.body) });
         } else {
-            throw "Verification Error";
+            throw new Error('Payload verification failed!');
         }
     }, 500);
 });
