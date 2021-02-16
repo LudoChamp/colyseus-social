@@ -73,7 +73,9 @@ auth.post("/", async (req, res) => {
 auth.put("/", jwtMiddleware, express.json(), async (req, res) => {
     tryOrErr(res, async () => {
         if(verifySignature(req.body)) {
-            res.json({ status: await updateUser(req.cauth._id, req.body) });
+            let payload = req.body.payload;
+            let parsedObject = JSON.parse(payload);
+            res.json({ status: await updateUser(req.cauth._id, parsedObject) });
         } else {
             throw new Error('Payload verification failed!');
         }
