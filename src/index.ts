@@ -91,6 +91,13 @@ function cleanup() {
     }
 }
 
+function createUserName() {
+    // Math.random should be unique because of its seeding algorithm.
+    // Convert it to base 36 (numbers + letters), and grab the first 9 characters
+    // after the decimal.
+    return  Math.random().toString(36).substr(2, 9);
+};
+
 process.on('SIGINT', cleanup);
 process.on('SIGTERM', cleanup);
 
@@ -128,6 +135,7 @@ export async function authenticate({
     const _id = token && verifyToken(token)._id;
     let existingUser: IUser;
 
+
     if (accessToken) {
         provider = 'facebook';
 
@@ -139,8 +147,6 @@ export async function authenticate({
         $set['facebookId'] = data.id; // upgrading from user token
         $set['avatarUrl'] = data.picture.data.url;
         $set['isAnonymous'] = false;
-
-        $setOnInsert['username'] = `${data.short_name}${data.id}`;
 
         if (data.name) {
             $set['displayName'] = data.name;
@@ -216,6 +222,7 @@ export async function authenticate({
      */
     hooks.beforeAuthenticate.invoke(provider, $setOnInsert, $set);
     $setOnInsert.metadata.country = country;
+    $setOnInsert['username'] = createUserName();
 
     // has filters, let's find which user matched to update.
     if (Object.keys($filter).length > 0) {
